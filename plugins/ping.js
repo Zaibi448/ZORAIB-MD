@@ -1,77 +1,129 @@
-const os = require('os');
-const process = require('process');
-const fs = require('fs');
-const { zokou } = require('../framework/zokou');
-const axios = require('axios');
-const path = require('path');
+ const config = require('../config');
+const { cmd } = require('../command');
 
-// Format uptime
-function formatTime(seconds) {
-    const days = Math.floor(seconds / 86400);
-    seconds %= 86400;
-    const hours = Math.floor(seconds / 3600);
-    seconds %= 3600;
-    const minutes = Math.floor(seconds / 60);
-    seconds = Math.floor(seconds % 60);
-    return `${days}d ${hours}h ${minutes}m ${seconds}s`;
-}
+const MUSIC_URL = "https://files.catbox.moe/o919rq.mp3"; // Customize if needed
 
-zokou({
-    nomCom: "ping",
-    categorie: "general",
-    reaction: "⚡",
-    desc: "Bot ping and system info"
-}, async (dest, zk, commandeOptions) => {
-    const { ms, arg, repondre } = commandeOptions;
+cmd({
+    pattern: "ping",
+    alias: ["speed", "pong"],
+    use: '.ping',
+    desc: "Check bot's response time.",
+    category: "main",
+    react: "🍁",
+    filename: __filename
+},
+async (conn, mek, m, { from, sender, reply }) => {
     try {
-        const start = Date.now();
-        const emojis = ['⚡', '🚀', '💨', '🎯', '🔥', '🎉', '🌟', '💥', '🧠'];
+        const start = new Date().getTime();
+
+        // Random emoji reaction
+        const emojis = ['⏰', '⚡', '🚀', '🔥', '💥', '🎯', '🛸', '📡', '🧠'];
         const emoji = emojis[Math.floor(Math.random() * emojis.length)];
 
-        const end = Date.now();
-        const ping = Math.round((end - start) / 2);
-        const uptime = formatTime(process.uptime());
+        await conn.sendMessage(from, {
+            react: { text: emoji, key: mek.key }
+        });
 
-        let speed = '🐢 Slow', color = '🔴';
-        if (ping <= 100) speed = '🚀 Super Fast', color = '🟢';
-        else if (ping <= 250) speed = '⚡ Fast', color = '🟡';
-        else if (ping <= 500) speed = '⚠️ Medium', color = '🟠';
+        const end = new Date().getTime();
+        const responseTime = (end - start) / 1000;
 
-        const report = `
-╭━━〔 ⚙️ *ZORAIB-MD - System Report* 〕━━⬣
-┃
-┃ 🛰️ *Response:* ${ping} ms ${emoji}
-┃ 📶 *Speed:* ${color} ${speed}
-┃ ⏱️ *Uptime:* ${uptime}
-┃ 🧠 *Platform:* ${os.platform().toUpperCase()}
-┃ 🧩 *NodeJS:* ${process.version}
-┃ 💎 *Bot Name:* ZORAIB-MD
-┃ 🔰 *Developer:* ZORAIB-MD Official
-┃
-╰━━━━━━━━━━━━━━━━━━━━━━━━━━━━⬣
+        // Multiple fancy styles
+        const styles = [
+`╭━━━━❖ *PING TEST 1* ❖━━━━╮
+┃ ⚡ *BOT:* ${config.BOT_NAME}
+┃ 🧭 *PING:* *${responseTime.toFixed(2)}s*
+┃ 🔖 *Prefix:* ${config.PREFIX}
+╰━━━━━━━━━━━━━━━━━━━━━━━╯
+> *ᴘᴏᴡᴇʀᴇᴅ ʙʏ ${config.OWNER_NAME}* 💙`,
 
-_“Speed defines the legend. You’re flying with ZORAIB-MD-.”_
-        `.trim();
+`┏━━━⪨ *SPEED TEST* ⪩━━━┓
+┃ 🤖 *BOT:* ${config.BOT_NAME}
+┃ ⚙️ *MODE:* ${config.MODE}
+┃ 🛸 *LATENCY:* ${responseTime.toFixed(2)}s
+┃ 🎯 *OWNER:* ${config.OWNER_NAME}
+┗━━━━━━━━━━━━━━━━━━━━━┛
+> *Powered by ZORAIB-MD*`,
 
-        await repondre(report);
+`⏱️ *Response Time:* *${responseTime.toFixed(2)} seconds*
+🤖 Bot: *${config.BOT_NAME}*
+🔋 Status: *Online*
+✨ Ping Check Complete!
+> _by ${config.OWNER_NAME}_`
+        ];
 
-        // Send the audio file at the end
-        const audioUrl = "https://files.catbox.moe/ykobyr.mp3";
-        const audioPath = path.join(__dirname, "../temp/ping_audio.mp3");
+        const caption = styles[Math.floor(Math.random() * styles.length)];
 
-        const response = await axios.get(audioUrl, { responseType: 'arraybuffer' });
-        fs.writeFileSync(audioPath, Buffer.from(response.data, 'binary'));
+        await conn.sendMessage(from, {
+            text: caption,
+            contextInfo: {
+                mentionedJid: [sender],
+                forwardingScore: 999,
+                isForwarded: true,
+                forwardedNewsletterMessageInfo: {
+                    newsletterJid: '120363405633935764@newsletter',
+                    newsletterName: config.BOT_NAME || 'ZORAIB-MD',
+                    serverMessageId: 143
+                }
+            }
+        }, { quoted: mek });
 
-        await zk.sendMessage(dest, {
-            audio: fs.readFileSync(audioPath),
-            mimetype: 'audio/mpeg',
-            ptt: true
-        }, { quoted: ms });
+        // Send optional audio
+        await conn.sendMessage(from, {
+            audio: { url: MUSIC_URL },
+            mimetype: 'audio/mp4',
+            ptt: false
+        }, { quoted: mek });
 
-        fs.unlinkSync(audioPath); // Delete after sending
+    } catch (e) {
+        console.error("Error in ping command:", e);
+        reply(`❌ Error: ${e.message}`);
+    }
+});
 
-    } catch (err) {
-        console.error('❌ Ping Error:', err);
-        await repondre("❌ Ping error. Try again later.");
+
+// ✅ ping2 (enhanced)
+cmd({
+    pattern: "ping2",
+    desc: "Check bot's response time - simple test.",
+    category: "main",
+    react: "📡",
+    filename: __filename
+},
+async (conn, mek, m, { from, reply }) => {
+    try {
+        const startTime = Date.now();
+        const message = await conn.sendMessage(from, { text: '*Checking ping... 🧪*' });
+        const endTime = Date.now();
+        const ping = endTime - startTime;
+
+        const styles2 = [
+`╭━━〔 *PING-2 RESULT* 〕━━╮
+┃ 🛠️ *BOT* : *${config.BOT_NAME}*
+┃ 🚀 *LATENCY* : *${ping} ms*
+╰━━━━━━━━━━━━━━━━━━━━╯
+> _by ${config.OWNER_NAME}_`,
+
+`┏━ *FAST SPEED CHECK* ━┓
+┃ 🔥 Ping: ${ping} ms
+┃ 👤 Owner: ${config.OWNER_NAME}
+┃ 🤖 Mode: ${config.MODE}
+┗━━━━━━━━━━━━━━━━━━━━━━┛`
+        ];
+
+        const caption2 = styles2[Math.floor(Math.random() * styles2.length)];
+
+        await conn.sendMessage(from, {
+            text: caption2
+        }, { quoted: message });
+
+        await conn.sendMessage(from, {
+            audio: { url: MUSIC_URL },
+            mimetype: 'audio/mp4',
+            ptt: false
+        }, { quoted: mek });
+
+    } catch (e) {
+        console.error("Error in ping2 command:", e);
+        reply(`❌ Error: ${e.message}`);
     }
 });
